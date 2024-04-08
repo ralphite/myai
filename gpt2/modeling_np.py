@@ -1,7 +1,10 @@
 import numpy as np
 from typing import Mapping
 
-from .config import GPT2SmallModelConfig
+from config import GPT2SmallModelConfig
+from sample import greedy_sample
+from utils import load_tokenizer, load_model_params, load_hf_model
+
 
 class NumPyGPT2CausalLM:
     def __init__(
@@ -151,3 +154,42 @@ class NumPyGPT2CausalLM:
     def gelu(self, x):
         """NewGELU activation."""
         return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
+
+
+if __name__ == "__main__":
+    import time
+
+    PROMPT = "Alan Turing theorized that computers would one day become"
+    MAX_LEN = 18
+
+    tokenizer_hf = load_tokenizer()
+
+    def gen_hf(prompt, max_len):
+        model_hf = load_hf_model()
+        input_ids = tokenizer_hf.encode(prompt, return_tensors="pt")
+        output = model_hf.generate(
+            input_ids, max_length=max_len, pad_token_id=tokenizer_hf.eos_token_id
+        )
+        response = tokenizer_hf.decode(output[0])
+        print(response)
+
+    def gen_np(prompt: str, max_len: int):
+        model = NumPyGPT2CausalLM(GPT2SmallModelConfig(), load_model_params())
+        input_ids = tokenizer_hf.encode(prompt, return_tensors="np").squeeze()
+
+        print(prompt, end="")
+        for _ in range(max_len - len(input_ids)):
+            logits = model(input_ids)
+            next_id = int(greedy_sample(logits))
+            input_ids = np.append(input_ids, next_id)
+            print(tokenizer_hf.decode([next_id]), end="")
+        print()
+
+    def test(gen):
+        print(f"{'#' * 80}\nTesting: {gen.__name__}")
+        start_time = time.time()
+        gen(PROMPT, MAX_LEN)
+        print(f"Time taken: {time.time() - start_time}\n")
+
+    test(gen_hf)
+    test(gen_np)
