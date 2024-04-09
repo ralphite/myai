@@ -1,2 +1,3 @@
-# myai
-ai algorithms impl for learning
+# reprod
+
+Reproduce important work in machine learning for fun and learning.

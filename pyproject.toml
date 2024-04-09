@@ -1,6 +1,6 @@
 [project]
 name = "reprod"
-version = "0.1.0"
+version = "0.1.1"
 description = "Reproduce important work in machine learning"
 readme = "README.md"
 requires-python ="~=3.9"
