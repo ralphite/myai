@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from functools import cache
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 

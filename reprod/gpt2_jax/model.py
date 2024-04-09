@@ -37,7 +37,6 @@ class GPT2Model(nn.Module):
         for block_id in range(self.config.n_layer):
             x = GPT2Block(name=f"block_{block_id}", config=self.config)(x)
 
-        # final layer normalization
         x = nn.LayerNorm(name="ln_f")(x)
         return x
 
@@ -60,34 +59,31 @@ class GPT2MultiHeadAttention(nn.Module):
     def setup(self):
         self.causal_mask = jnp.tril(
             jnp.ones((self.config.context_size, self.config.context_size))
-        )
+        ).astype(bool)
 
     @nn.compact
     def __call__(self, x):
+        orig_shape = x.shape
+        head_size = self.config.n_embd // self.config.n_head
+        new_shape = orig_shape[:-1] + (self.config.n_head, head_size)
+
         x = nn.Dense(name="c_attn", features=self.config.n_embd * 3)(x)
-
         q, k, v = jnp.split(x, 3, axis=-1)
-        new_shape = x.shape[:-1] + (
-            self.config.n_head,
-            self.config.n_embd // self.config.n_head,
-        )
-        q = jnp.reshape(q, new_shape).transpose((0, 2, 1, 3))
-        k = jnp.reshape(k, new_shape).transpose((0, 2, 1, 3))
-        v = jnp.reshape(v, new_shape).transpose((0, 2, 1, 3))
+        q = jnp.swapaxes(jnp.reshape(q, new_shape), -2, -3)
+        k = jnp.swapaxes(jnp.reshape(k, new_shape), -2, -3)
+        v = jnp.swapaxes(jnp.reshape(v, new_shape), -2, -3)
 
-        attn_weights = jnp.matmul(q, jnp.swapaxes(k, -1, -2)) / jnp.sqrt(
-            self.config.n_embd // self.config.n_head
-        )
+        attn_weights = jnp.matmul(q, jnp.swapaxes(k, -1, -2)) / jnp.sqrt(head_size)
         attn_weights = jnp.where(
-            self.causal_mask[: x.shape[-2], : x.shape[-2]].astype(bool),
+            self.causal_mask[: orig_shape[-2], : orig_shape[-2]],
             attn_weights,
             -1e4,
         )
         attn_weights = nn.softmax(attn_weights, axis=-1)
         attn_weights = attn_weights.astype(v.dtype)
         x = jnp.matmul(attn_weights, v)
-        x = jnp.transpose(x, (0, 2, 1, 3))
-        x = jnp.reshape(x, x.shape[:-2] + (self.config.n_embd,))
+        x = jnp.swapaxes(x, -2, -3)
+        x = jnp.reshape(x, orig_shape)
 
         x = nn.Dense(name="c_proj", features=self.config.n_embd)(x)
         return x
