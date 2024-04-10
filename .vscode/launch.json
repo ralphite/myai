@@ -5,10 +5,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "gpt2_jax/main.py",
+            "name": "gpt2_jax/generate.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "reprod/gpt2_jax/main.py",
+            "program": "reprod/gpt2_jax/generate.py",
             "console": "integratedTerminal"
         }
     ]

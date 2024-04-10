@@ -27,6 +27,8 @@ class GPT2Model(nn.Module):
             features=self.config.n_embd,
         )(input_ids)
         position_ids = jnp.arange(start=0, stop=input_ids.shape[-1])
+
+        # Q: should this be learned or from a formula?
         position_embeddings = nn.Embed(
             name="wpe",
             num_embeddings=self.config.context_size,
